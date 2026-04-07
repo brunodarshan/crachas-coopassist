@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Crachás - COOPASSIST</title>
+    <!-- Vue.js 3 via CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Tailwind CSS para o painel administrativo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --coop-green: #2e7d32;
+            --badge-width: 100mm;
+            --badge-height: 70mm;
+            /* Ajustado proporcionalmente para o novo tamanho de 70mm de altura */
+            --photo-width: 35mm; 
+            --photo-height: 46.6mm;
+        }
+
+        /* Estilos do Crachá baseados no modelo cracha_tais.pdf */
+        .badge-canvas {
+            width: var(--badge-width);
+            height: var(--badge-height);
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            border-radius: 2mm;
+            overflow: hidden;
+            position: relative;
+            border: 0.1mm solid #ccc;
+            box-sizing: border-box;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 100%;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+
+        /* Cabeçalho Verde (Altura otimizada para 70mm) */
+        .badge-header {
+            background-color: var(--coop-green);
+            height: 16mm;
+            display: flex;
+            align-items: center;
+            padding: 0 5mm;
+            color: white;
+            gap: 4mm;
+            flex-shrink: 0;
+        }
+
+        .badge-logo {
+            width: 12mm;
+            height: 12mm;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            padding: 1mm;
+        }
+
+        .badge-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .badge-header-text {
+            font-size: 8.5pt;
+            font-weight: 700;
+            line-height: 1.1;
+            text-transform: uppercase;
+            color: white;
+            letter-spacing: 0.1pt;
+        }
+
+        /* Área de Conteúdo */
+        .badge-content {
+            flex: 1;
+            display: flex;
+            padding: 3mm 5mm;
+            gap: 6mm;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Moldura da Foto */
+        .badge-photo {
+            width: var(--photo-width);
+            height: var(--photo-height);
+            border: 0.4mm solid #444;
+            border-radius: 1mm;
+            overflow: hidden;
+            background-color: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .badge-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Informações do Profissional */
+        .badge-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1;
+            height: 100%;
+        }
+
+        .badge-label {
+            font-size: 6.5pt;
+            color: #999;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 0.5mm;
+        }
+
+        .badge-name {
+            font-size: 13pt;
+            font-weight: 800;
+            color: var(--coop-green);
+            margin-bottom: 3mm;
+            line-height: 1.1;
+            text-transform: none;
+        }
+
+        .badge-role {
+            font-size: 10.5pt;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 3mm;
+            line-height: 1.1;
+        }
+
+        /* Estilo Pílula do Registro */
+        .badge-coren {
+            font-size: 10pt;
+            font-weight: 700;
+            color: #333;
+            background: #e8f5e9 !important;
+            padding: 1.2mm 4mm;
+            border-radius: 1.5mm;
+            display: inline-block;
+            border: 0.2mm solid #c8e6c9;
+            width: fit-content;
+            margin-top: 1.5mm;
+        }
+
+        @media print {
+            body { 
+                background: white !important; 
+                margin: 0; 
+                padding: 0; 
+            }
+            .no-print { 
+                display: none !important; 
+            }
+            #printable-section {
+                display: block !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+            .badge-canvas { 
+                box-shadow: none !important; 
+                border: 0.1mm solid #000 !important; /* Borda sólida preta para guia de corte */
+                border-radius: 0 !important;
+            }
+            @page { 
+                size: 100mm 70mm; 
+                margin: 0; 
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 antialiased font-sans">
+
+    <div id="app" class="max-w-5xl mx-auto p-4 lg:py-10">
+        
+        <header class="mb-6 text-center lg:text-left no-print">
+            <h1 class="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">Gerador de Crachás <span class="text-green-700">COOPASSIST</span></h1>
+            <p class="text-slate-500 font-medium text-sm">Crie e imprima a sua identificação profissional padrão.</p>
+        </header>
+
+        <div class="flex flex-col lg:grid lg:grid-cols-2 gap-8 items-start">
+            
+            <!-- Pré-visualização do Crachá -->
+            <section id="printable-section" class="w-full flex flex-col items-center order-1 lg:order-2 lg:sticky lg:top-10">
+                <h3 class="mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] no-print">Modelo Final (100x70mm)</h3>
+                <div class="badge-canvas">
+                    <!-- Cabeçalho Verde Sólido -->
+                    <header class="badge-header">
+                        <div class="badge-logo">
+                           <img src="logo.png" alt="Logo" onerror="this.src='https://via.placeholder.com/100?text=Logo'">
+                        </div>
+                        <div class="badge-header-text">
+                            Cooperativa de Trabalho de Assistência de Enfermagem do Nordeste
+                        </div>
+                    </header>
+
+                    <!-- Conteúdo com Foto e Dados -->
+                    <main class="badge-content">
+                        <div class="badge-photo">
+                            <img v-if="user.photo" :src="user.photo" alt="Foto">
+                            <div v-else class="text-center">
+                                <div class="text-[8pt] text-slate-300 font-bold uppercase">Foto</div>
+                                <div class="text-[7pt] text-slate-200">3x4</div>
+                            </div>
+                        </div>
+
+                        <div class="badge-info">
+                            <span class="badge-label">Profissional</span>
+                            <div class="badge-name">{{ user.name || 'Nome do Profissional' }}</div>
+                            
+                            <span class="badge-label">Cargo</span>
+                            <div class="badge-role">{{ user.role }}</div>
+                            
+                            <div class="badge-coren">
+                                {{ user.tipoRegistry || 'COREN-XX' }}: {{ user.coren || '000.000.000' }}
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </section>
+
+            <!-- Formulário de Edição -->
+            <section class="w-full bg-white p-6 lg:p-8 rounded-2xl shadow-xl shadow-slate-200/60 border border-white order-2 lg:order-1 no-print">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="p-2 bg-green-50 rounded-lg text-green-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </div>
+                    <h2 class="text-lg font-bold">Editar Informações</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 gap-5">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-wider">Nome Completo</label>
+                        <input v-model="user.name" type="text" class="w-full px-4 py-3 bg-slate-50 border-slate-100 border rounded-xl focus:ring-2 focus:ring-green-500 transition-all font-medium text-slate-700 outline-none" placeholder="Ex: Fulano de Tal">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-wider">Cargo</label>
+                            <select v-model="user.role" class="w-full px-4 py-3 bg-slate-50 border-slate-100 border rounded-xl focus:ring-2 focus:ring-green-500 transition-all font-medium text-slate-700 appearance-none outline-none">
+                                <option value="Enfermeiro(a)">Enfermeiro(a)</option>
+                                <option value="Técnica de Enfermagem">Técnica de Enfermagem</option>
+                                <option value="Técnico de Enfermagem">Técnico de Enfermagem</option>
+                                <option value="Auxiliar de Enfermagem">Auxiliar de Enfermagem</option>
+                                <option value="Administrativo">Administrativo</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-wider">Prefixo (Ex: COREN-PI)</label>
+                            <input v-model="user.tipoRegistry" type="text" class="w-full px-4 py-3 bg-slate-50 border-slate-100 border rounded-xl focus:ring-2 focus:ring-green-500 transition-all font-medium text-slate-700 outline-none" placeholder="COREN-XX">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-wider">Número do Registo</label>
+                        <input v-model="user.coren" type="text" class="w-full px-4 py-3 bg-slate-50 border-slate-100 border rounded-xl focus:ring-2 focus:ring-green-500 transition-all font-medium text-slate-700 outline-none" placeholder="000.000.000">
+                    </div>
+
+                    <div class="mt-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-wider">Foto Profissional</label>
+                        <label class="relative flex flex-col items-center justify-center w-full h-20 border-2 border-slate-100 border-dashed rounded-2xl hover:bg-slate-50 hover:border-green-300 transition-all cursor-pointer group">
+                            <input @change="handleFileUpload" type="file" accept="image/*" class="hidden">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-5 h-5 text-slate-300 group-hover:text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <p class="text-xs font-bold text-slate-400 group-hover:text-green-600">Carregar nova foto 3x4</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <button @click="printBadge" class="w-full mt-8 bg-green-700 hover:bg-green-800 text-white font-black py-4 rounded-2xl shadow-lg shadow-green-100 transition-all flex items-center justify-center gap-3 active:scale-[0.98]">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    IMPRIMIR CRACHÁ
+                </button>
+            </section>
+        </div>
+
+        <!-- Rodapé discreto -->
+        <footer class="mt-12 text-center text-[10px] text-slate-400 font-medium tracking-wide no-print">
+            Desenvolvido com tecnologia <a href="https://brunodarshan.com.br" target="_blank" class="hover:text-green-600 transition-colors">brunodarshan.com.br</a>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+
+        createApp({
+            setup() {
+                const user = ref({
+                    name: 'Fulano de Tal',
+                    role: 'Técnica de Enfermagem',
+                    tipoRegistry: 'COREN-XX',
+                    coren: '000.000.000',
+                    photo: null
+                });
+
+                const handleFileUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            user.value.photo = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+
+                const printBadge = () => {
+                    window.print();
+                };
+
+                return {
+                    user,
+                    handleFileUpload,
+                    printBadge
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
